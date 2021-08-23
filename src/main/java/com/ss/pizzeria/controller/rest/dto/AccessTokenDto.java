@@ -1,4 +1,4 @@
-package com.ss.pizzeria.dto;
+package com.ss.pizzeria.controller.rest.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;

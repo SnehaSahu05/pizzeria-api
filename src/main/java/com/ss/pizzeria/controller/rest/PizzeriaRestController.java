@@ -1,8 +1,9 @@
-package com.ss.pizzeria.controller;
+package com.ss.pizzeria.controller.rest;
 
-import com.ss.pizzeria.dto.AccessTokenDto;
-import com.ss.pizzeria.dto.ApiAuthDto;
-import com.ss.pizzeria.dto.ErrorResponseMessageDto;
+import com.ss.pizzeria.controller.rest.dto.AccessTokenDto;
+import com.ss.pizzeria.controller.rest.dto.UserAuthDto;
+import com.ss.pizzeria.controller.rest.dto.OrderDto;
+import com.ss.pizzeria.controller.rest.dto.ErrorResponseMessageDto;
 import com.ss.pizzeria.service.PizzeriaService;
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
 import io.swagger.v3.oas.annotations.Operation;
@@ -17,9 +18,11 @@ import org.springframework.context.annotation.Description;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.util.List;
 
 /**
  * Rest Controller to communicate with backend service.
@@ -41,18 +44,26 @@ import javax.validation.Valid;
 )
 public class PizzeriaRestController {
 
-    /* injected service */
+    /* Tags */
+    private static final String TAG_AUTH = "Auth";
+    private static final String TAG_ORDERS = "Orders";
+
+    /* url for order */
+    private static final String ORDERS = "/orders";
+
+    /* inject service */
+    @NonNull
     private final PizzeriaService myService;
 
-    public PizzeriaRestController(PizzeriaService myService) {
+    public PizzeriaRestController(@NonNull final PizzeriaService myService) {
         this.myService = myService;
     }
 
     @PostMapping(path = "/auth")
     @Description(value = "Create an access token for user to login")
-    @Operation(operationId = "auth.login", summary = "Create an access token", tags = {"Auth"})
+    @Operation(operationId = "auth.login", summary = "Create an access token", tags = {TAG_AUTH})
     @RequestBody(required = true, description = "token to create",
-            content = @Content(schema = @Schema(implementation = ApiAuthDto.class))
+            content = @Content(schema = @Schema(implementation = UserAuthDto.class))
     ) // alternative to using in='body' with @Parameter
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Successfully created token",
@@ -63,13 +74,27 @@ public class PizzeriaRestController {
     @ResponseBody
     public ResponseEntity<Object> authenticateApi(
             @org.springframework.web.bind.annotation.RequestBody
-            @Valid final ApiAuthDto auth) {
+            @Valid final UserAuthDto auth) {
         final AccessTokenDto accessToken = this.myService.getAccessToken(auth);
         if (accessToken.getAccessToken().isEmpty()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponseMessageDto("Bad username or password"));
         } else {
             return ResponseEntity.status(HttpStatus.CREATED).body(accessToken);
         }
+    }
+
+    @GetMapping(path = ORDERS)
+    @Description(value = "Read the entire set of orders, sorted by timestamp.")
+    @Operation(operationId = "orders.read_all", summary = "Return list of Pizza orders", tags = {TAG_ORDERS})
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successfully read orders set operation")
+    })
+    @ResponseBody
+    public ResponseEntity<List<OrderDto>> getOrders() {
+        log.info("...REST request received");
+        List<OrderDto> list = this.myService.readAllOrdersSortedByTime();
+        log.info("...REST dto list: {}", list);
+        return ResponseEntity.status(HttpStatus.OK).body(list);
     }
 
 }
