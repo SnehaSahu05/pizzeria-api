@@ -33,5 +33,5 @@ build/
 .vscode/
 
 ### Generated H2 DB directory ###
-!/db/
 !/notes.md
+!/db/
