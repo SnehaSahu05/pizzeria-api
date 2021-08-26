@@ -1,4 +1,4 @@
-package com.ss.pizzeria;
+package com.ss.pizzeria.backend;
 
 import org.modelmapper.ModelMapper;
 import org.springframework.boot.SpringApplication;

@@ -1,4 +1,4 @@
-package com.ss.pizzeria.controller.rest.dto;
+package com.ss.pizzeria.backend.controller.rest.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,7 +9,7 @@ import org.springframework.lang.Nullable;
  */
 @Data
 @AllArgsConstructor
-public class ErrorResponseMessageDto {
+public class ResponseMessageDto {
 
     @Nullable
     private String msg;

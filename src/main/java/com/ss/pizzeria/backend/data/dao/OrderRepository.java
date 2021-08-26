@@ -1,6 +1,6 @@
-package com.ss.pizzeria.data.dao;
+package com.ss.pizzeria.backend.data.dao;
 
-import com.ss.pizzeria.data.model.Order;
+import com.ss.pizzeria.backend.data.model.Order;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

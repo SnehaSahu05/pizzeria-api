@@ -1,10 +1,11 @@
-package com.ss.pizzeria.data;
+package com.ss.pizzeria.backend.data;
 
-import com.ss.pizzeria.data.dao.OrderRepository;
-import com.ss.pizzeria.data.model.Order;
+import com.ss.pizzeria.backend.data.dao.OrderRepository;
+import com.ss.pizzeria.backend.data.model.Order;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -13,17 +14,19 @@ import java.util.List;
 
 /**
  * Add data to the table on startup.
- * @author Sneha
+ * Alternatively, can add import.sql in resources directory to populate database.
+ * The generator can be disabled by commenting out @Component/@Configuration annotations.
  *
- * Comment out @Component annotation for this file to not work
+ * @author Sneha
  */
 @Slf4j
-@Component
-public class DataSetGenerator {
+//@Component
+@Configuration
+public class DataGenerator {
 
     @Bean
     public CommandLineRunner createOrders(OrderRepository orderRepos) {
-        return e -> {
+        return dataset -> {
             if (orderRepos.count() != 0L) {
                 log.info("Using already existing dataset !!");
                 return;
@@ -49,7 +52,6 @@ public class DataSetGenerator {
         myOrder.setFlavour(flavor);
         myOrder.setSize(size);
         myOrder.setTableNo(tableNo);
-        myOrder.setTimestamp(Instant.now().truncatedTo(ChronoUnit.MILLIS).toString());
         return myOrder;
     }
 

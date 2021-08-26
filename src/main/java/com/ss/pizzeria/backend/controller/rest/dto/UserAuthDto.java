@@ -1,10 +1,9 @@
-package com.ss.pizzeria.controller.rest.dto;
+package com.ss.pizzeria.backend.controller.rest.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
-
-import javax.validation.constraints.NotNull;
+import lombok.NonNull;
 
 /**
  * @author Sneha
@@ -12,13 +11,13 @@ import javax.validation.constraints.NotNull;
 @Data
 public class UserAuthDto {
 
-    @Schema(description = "username of user")
+    @Schema(description = "username of user", required = true, example = "name")
     @JsonProperty("username")
-    @NotNull
+    @NonNull
     private String username;
 
-    @Schema(description = "password of user")
+    @Schema(description = "password of user", required = true, example = "password")
     @JsonProperty("password")
-    @NotNull
+    @NonNull
     private String password;
 }
