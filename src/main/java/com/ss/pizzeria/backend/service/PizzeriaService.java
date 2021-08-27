@@ -1,13 +1,11 @@
 package com.ss.pizzeria.backend.service;
 
 import com.ss.pizzeria.backend.Constants;
-import com.ss.pizzeria.backend.controller.rest.dto.AccessTokenDto;
-import com.ss.pizzeria.backend.controller.rest.dto.OrderCeateDto;
-import com.ss.pizzeria.backend.controller.rest.dto.OrderDto;
-import com.ss.pizzeria.backend.controller.rest.dto.UserAuthDto;
 import com.ss.pizzeria.backend.data.dao.OrderRepository;
+import com.ss.pizzeria.backend.data.dao.PersonRepository;
 import com.ss.pizzeria.backend.data.model.Order;
-import javassist.NotFoundException;
+import com.ss.pizzeria.backend.data.model.Person;
+import com.ss.pizzeria.backend.rest.dto.*;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Sort;
@@ -31,19 +29,24 @@ public class PizzeriaService {
 
     /* inject repository to access orders Table */
     @NonNull
+    private final PersonRepository peopleRepos;
+
+    /* inject repository to access orders Table */
+    @NonNull
     private final OrderRepository orderRepos;
 
     /* inject mapper to convert from jpa entity to dto */
     @NonNull
     private final ModelMapper mapper;
 
-    public PizzeriaService(@NonNull final OrderRepository orderRepos, @NonNull final ModelMapper mapper) {
+    public PizzeriaService(@NonNull PersonRepository peopleRepos, @NonNull final OrderRepository orderRepos, @NonNull final ModelMapper mapper) {
+        this.peopleRepos = peopleRepos;
         this.orderRepos = orderRepos;
         this.mapper = mapper;
     }
 
     /**
-     * Returns a fixed token for `test' user and an empty token for all other cases
+     * Returns a fixed token for `test' user and an empty token otherwise
      */
     @NotNull
     public AccessTokenDto getAccessToken(@NotNull final UserAuthDto credentials) {
@@ -54,6 +57,9 @@ public class PizzeriaService {
         return accessTokenDto;
     }
 
+    /**
+     * fetches a list of orders
+     */
     @NotNull
     public List<OrderDto> readAllOrdersSortedByTime() {
         List<OrderDto> dtoList = new ArrayList<>();
@@ -62,21 +68,41 @@ public class PizzeriaService {
         return dtoList;
     }
 
+    /**
+     * creates a new Order
+     */
     @NotNull
-    public OrderDto createOrder(@NotNull final OrderCeateDto orderCreateDto) {
-        // retrieve information
-        final Order request = this.mapper.map(orderCreateDto, Order.class);
-        // check person exist
-        // create when not
-        // create order
-        final Order created = this.orderRepos.saveAndFlush(request);
+    public OrderDto createOrder(@NotNull final OrderCreateDto orderRequest) {
+        // retrieve valid customer
+        final Long personId = orderRequest.getCustomerId();
+        final Optional<Person> findRegisteredCustomer = peopleRepos.findById(personId);
+        final Person customer = findRegisteredCustomer.orElseThrow(
+                () -> new NoSuchElementException("No Person exists with ID=" + personId)
+        );
+        // continue to create order
+        final Order order = this.mapper.map(orderRequest, Order.class);
+        order.setCustomer(customer);
+        customer.getOrderList().add(order);
+        /* save to any one repository is enough because of the oneToMany/ManyToOne mappings */
+        final Order created = this.orderRepos.saveAndFlush(order);
         return this.mapper.map(created, OrderDto.class);
-
     }
 
+    /**
+     * removes the Order with given ID
+     */
     public void removeOrder(final Long orderId) {
-        log.info("recieve order id {} of type {}", orderId, orderId.getClass().getSimpleName());
         final Optional<Order> findOrder = this.orderRepos.findById(orderId);
         this.orderRepos.delete(findOrder.orElseThrow(() -> new NoSuchElementException("Order #" + orderId + " not found.")));
+    }
+
+    /**
+     * registers a new Person with empty order list
+     */
+    public PersonDto registerPerson(PersonCreateDto request) {
+        // no need to check existing name, as it is possible to have 2 people with same name
+        final Person registered = this.peopleRepos.saveAndFlush(new Person(request.getName()));
+        // not considered mapping back from List<Order> to List<OrderDto>, as this is always empty list for new Person()
+        return this.mapper.map(registered, PersonDto.class);
     }
 }

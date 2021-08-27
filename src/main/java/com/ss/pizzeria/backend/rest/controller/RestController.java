@@ -1,7 +1,7 @@
-package com.ss.pizzeria.backend.controller.rest;
+package com.ss.pizzeria.backend.rest.controller;
 
 import com.ss.pizzeria.backend.Constants;
-import com.ss.pizzeria.backend.controller.rest.dto.*;
+import com.ss.pizzeria.backend.rest.dto.*;
 import com.ss.pizzeria.backend.service.PizzeriaService;
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
 import io.swagger.v3.oas.annotations.Operation;
@@ -24,7 +24,6 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
 import java.util.List;
-import java.util.NoSuchElementException;
 
 /**
  * Rest Controller to communicate with backend service.
@@ -32,7 +31,7 @@ import java.util.NoSuchElementException;
  * @author Sneha
  */
 @Slf4j
-@RestController
+@org.springframework.web.bind.annotation.RestController
 @OpenAPIDefinition(
         info = @Info(
                 description = "A REST-ful API for pizza ordering.",
@@ -44,23 +43,26 @@ import java.util.NoSuchElementException;
         //consumes = MediaType.APPLICATION_JSON_VALUE,
         produces = MediaType.APPLICATION_JSON_VALUE
 )
-public class PizzeriaRestController {
+public class RestController {
 
     /* Tags */
     private static final String TAG_ORDERS = Constants.Tags.ORDERS;
 
     /* url for order */
     private static final String ORDERS = Constants.Paths.ORDERS;
-    private static final String PARAM_ORDER_ID = Constants.Paths.PARAM_ORDER_ID;
+    private static final String PARAM_ORDER_ID = Constants.Params.ORDER_ID;
 
     /* inject service */
     @NonNull
     private final PizzeriaService myService;
 
-    public PizzeriaRestController(@NonNull final PizzeriaService myService) {
+    public RestController(@NonNull final PizzeriaService myService) {
         this.myService = myService;
     }
 
+    /**
+     * Authenticate with the API
+     */
     @PostMapping(path = Constants.Paths.AUTH)
     @Description(value = "Create an access token for user to login")
     @Operation(operationId = "auth.login", summary = "Create an access token", tags = {Constants.Tags.AUTH})
@@ -87,7 +89,10 @@ public class PizzeriaRestController {
         }
     }
 
-    // when using default consumes at class level, cannot process -- empty media content '' -- for GET
+    /**
+     * Read all Orders, sorted by timestamp
+     */
+    // when using default 'consumes' at class level, cannot process empty media content '' for GET
     @GetMapping(path = ORDERS)
     @Description(value = "Read the entire set of orders, sorted by timestamp.")
     @Operation(operationId = "orders.read_all", summary = "Return list of Pizza orders", tags = {TAG_ORDERS})
@@ -101,14 +106,51 @@ public class PizzeriaRestController {
         return ResponseEntity.status(HttpStatus.OK).body(list);
     }
 
+    /**
+     * Register Customer
+     */
+    @PostMapping(path = Constants.Paths.REG)
+    @Description(value = "Create a new person with given name and return ID")
+    @Operation(operationId = "persons.create", summary = "Create a person", tags = {Constants.Tags.REG})
+    @Parameters(value = {
+            @Parameter(name = "token", description = "Token for authentication", required = true, in = ParameterIn.HEADER)
+    })
+    @RequestBody(required = true, description = "Name of Customer",
+            content = @Content(schema = @Schema(implementation = PersonCreateDto.class))
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Successfully created person",
+                    content = @Content(schema = @Schema(implementation = PersonDto.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid Request Body"),
+            @ApiResponse(responseCode = "401", description = "Not authorized",
+                    content = @Content(schema = @Schema(implementation = ResponseMessageDto.class)))
+    })
+    @ResponseBody
+    public ResponseEntity<Object> addPerson(@RequestHeader(name = "token")
+                                            @NonNull final String bearerToken,
+                                            @org.springframework.web.bind.annotation.RequestBody
+                                            @Valid
+                                            @NonNull final PersonCreateDto name) {
+        // TODO: 2
+        final String tokenStatus = checkTokenHeader(bearerToken);
+        if (!tokenStatus.equals(Constants.OK)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ResponseMessageDto(tokenStatus));
+        }
+        final PersonDto created = this.myService.registerPerson(name);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    /**
+     * Create a new Order
+     */
     @PostMapping(path = ORDERS)
-    @Description(value = "Create a new person")
+    @Description(value = "Create a new order for given person (id)")
     @Operation(operationId = "orders.create", summary = "Create an order", tags = {TAG_ORDERS})
     @Parameters(value = {
             @Parameter(name = "token", description = "Token for authentication", required = true, in = ParameterIn.HEADER)
     })
     @RequestBody(required = true, description = "Order to create",
-            content = @Content(schema = @Schema(implementation = OrderCeateDto.class))
+            content = @Content(schema = @Schema(implementation = OrderCreateDto.class))
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Successfully created order",
@@ -118,17 +160,15 @@ public class PizzeriaRestController {
                     content = @Content(schema = @Schema(implementation = ResponseMessageDto.class)))
     })
     @ResponseBody
-    public ResponseEntity<Object> createOrders(@RequestHeader(name = "token", defaultValue = Constants.AUTH_TOKEN)
-                                               @NonNull final String accessToken,
+    public ResponseEntity<Object> createOrders(@RequestHeader(name = "token")
+                                               @NonNull final String bearerToken,
                                                @org.springframework.web.bind.annotation.RequestBody
                                                @Valid
-                                               @NonNull final OrderCeateDto order) {
-        // TODO: 1, 2
-        if (accessToken.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ResponseMessageDto("Missing Authorization Header"));
-        }
-        if (!accessToken.equals(Constants.AUTH_TOKEN)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ResponseMessageDto("Incorrect Authorization Header"));
+                                               @NonNull final OrderCreateDto order) {
+        // TODO: 2
+        final String tokenStatus = checkTokenHeader(bearerToken);
+        if (!tokenStatus.equals(Constants.OK)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ResponseMessageDto(tokenStatus));
         }
         final OrderDto created = this.myService.createOrder(order);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
@@ -150,14 +190,30 @@ public class PizzeriaRestController {
     public ResponseEntity<Object> deleteOrder(@PathVariable(name = PARAM_ORDER_ID)
                                               @Parameter(name = PARAM_ORDER_ID)
                                               @NonNull final String id) {
-        try {
-            this.myService.removeOrder(Long.parseLong(id, 10));
-            return ResponseEntity.status(HttpStatus.OK).body(
-                    new ResponseMessageDto("Successfully deleted order #" + id));
-        } catch (NoSuchElementException e) {
-            // TODO: 1-exception handling
-            // throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e.getCause());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ResponseMessageDto(e.getMessage()));
-        }
+        // TODO: 1-header would be nice
+        this.myService.removeOrder(Long.parseLong(id, 10));
+        return ResponseEntity.status(HttpStatus.OK).body(
+                new ResponseMessageDto("Successfully deleted order #" + id));
     }
+
+    // delete user
+
+    // get all user orders
+
+    // post user cancel order
+
+    /**
+     * check authorization header
+     */
+    @NonNull
+    private String checkTokenHeader(@NonNull final String s) {
+        if (s.isEmpty()) {
+            return ("Missing Authorization Header");
+        }
+        if (!s.equals(Constants.AUTH_TOKEN)) {
+            return ("Incorrect Authorization Header");
+        }
+        return Constants.OK;
+    }
+
 }

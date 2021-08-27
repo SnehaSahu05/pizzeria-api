@@ -1,15 +1,15 @@
 package com.ss.pizzeria.backend.data;
 
-import com.ss.pizzeria.backend.data.dao.OrderRepository;
+import com.ss.pizzeria.backend.data.dao.PersonRepository;
 import com.ss.pizzeria.backend.data.model.Order;
+import com.ss.pizzeria.backend.data.model.Person;
+import com.ss.pizzeria.backend.data.model.Pizza;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.stereotype.Component;
+import org.springframework.lang.NonNull;
 
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 /**
@@ -25,33 +25,46 @@ import java.util.List;
 public class DataGenerator {
 
     @Bean
-    public CommandLineRunner createOrders(OrderRepository orderRepos) {
+    public CommandLineRunner createOrders(PersonRepository personRepos) {
+        // No need for explicit order repository,
+        // because the CASCADE.ALL in person OrderList
+        // will eventually add orders when adding associated Person
         return dataset -> {
-            if (orderRepos.count() != 0L) {
+            if (personRepos.count() != 0L) {
                 log.info("Using already existing dataset !!");
                 return;
             }
             log.info("Generating dataset...");
-            orderRepos.saveAllAndFlush(createOrders());
+            personRepos.saveAllAndFlush(createOrders());
             log.info("Data Generation is successful !!");
         };
     }
 
-    private List<Order> createOrders() {
-
-        return List.of(
-                newOrder("NORMAL", "BEEF_NORMAL", "M", 1),
-                newOrder("THIN", "CHEESE", "S", 5),
-                newOrder("NORMAL", "CHICKEN-FAJITA", "L", 3)
-        );
+    @NonNull
+    private List<Person> createOrders() {
+        // create customers
+        final Person p1 = new Person("John");
+        final Person p2 = new Person("Joe");
+        // create orders linked to customer
+        final Order o1 = newOrder(Pizza.Flavour.HAWAII, Pizza.Size.M, 1, p1);
+        final Order o2 = newOrder(Pizza.Flavour.QUARTTRO_FORMAGGI, Pizza.Size.L, 5, p2);
+        final Order o3 = newOrder(Pizza.Flavour.REGINA, Pizza.Size.L, 3, p1);
+        // update customer with order
+        p1.setOrderList(List.of(o1, o3));
+        p2.setOrderList(List.of(o2));
+        return List.of(p1, p2);
     }
 
-    private Order newOrder(String crust, String flavor, String size, int tableNo) {
+    @NonNull
+    private Order newOrder(@NonNull final Pizza.Flavour flavor,
+                           @NonNull final Pizza.Size size, @NonNull final int tableNo,
+                           @NonNull final Person p) {
         Order myOrder = new Order();
-        myOrder.setCrust(crust);
+        myOrder.setCrust(Pizza.Crust.THIN);
         myOrder.setFlavour(flavor);
         myOrder.setSize(size);
         myOrder.setTableNo(tableNo);
+        myOrder.setCustomer(p);
         return myOrder;
     }
 

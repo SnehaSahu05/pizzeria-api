@@ -34,4 +34,6 @@ build/
 
 ### Generated H2 DB directory ###
 !/notes.md
+!/db-v1/
+!/src/main/java/com/ss/pizzeria/backend/data/DataGeneratorForDbV1.java
 !/db/

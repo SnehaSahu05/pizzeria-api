@@ -1,4 +1,4 @@
-package com.ss.pizzeria.backend.controller.rest.dto;
+package com.ss.pizzeria.backend.rest.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

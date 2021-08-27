@@ -1,15 +1,19 @@
 package com.ss.pizzeria.backend.data.model;
 
-import lombok.*;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
 import org.hibernate.Hibernate;
 
 import javax.persistence.*;
+import javax.validation.constraints.NotNull;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 
 /**
  * DB Table for Order.
+ *
  * @author Sneha
  */
 @Entity
@@ -24,20 +28,27 @@ public class Order {
     @Column(name = "id", nullable = false)
     private Long id;
 
-    @NonNull
-    private String crust;
+    // marked as NonNull to validate with the REST request, but should not be initialized
+    @NotNull
+    private Pizza.Crust crust;
 
-    @NonNull
-    private String size;
+    @NotNull
+    private Pizza.Size size;
 
     @Column(name = "table_no")
-    @NonNull
+    @NotNull
     private int tableNo;
 
-    @NonNull
-    private String flavour;
+    @NotNull
+    private Pizza.Flavour flavour;
 
-    @NonNull
+    @ManyToOne(optional = false, cascade = CascadeType.ALL)
+    @JoinColumn(name = "person_id", nullable = false, updatable = false,
+            foreignKey = @ForeignKey(name = "fk_order_person_id", value = ConstraintMode.CONSTRAINT))
+    @NotNull
+    private Person customer;
+
+    @NotNull
     private String timestamp;
 
     public Order() {
