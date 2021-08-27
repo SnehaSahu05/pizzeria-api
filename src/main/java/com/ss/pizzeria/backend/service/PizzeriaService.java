@@ -77,7 +77,7 @@ public class PizzeriaService {
         final Long personId = orderRequest.getCustomerId();
         final Optional<Person> findRegisteredCustomer = peopleRepos.findById(personId);
         final Person customer = findRegisteredCustomer.orElseThrow(
-                () -> new NoSuchElementException("No Person exists with ID=" + personId)
+                () -> new NoSuchElementException(Constants.Messages.NO_PERSON_EXISTS_WITH_ID + personId)
         );
         // continue to create order
         final Order order = this.mapper.map(orderRequest, Order.class);
@@ -91,18 +91,32 @@ public class PizzeriaService {
     /**
      * removes the Order with given ID
      */
-    public void removeOrder(final Long orderId) {
-        final Optional<Order> findOrder = this.orderRepos.findById(orderId);
+    public void removeOrder(@NotNull final String orderId) {
+        final Optional<Order> findOrder = this.orderRepos.findById(Long.parseLong(orderId, 10));
         this.orderRepos.delete(findOrder.orElseThrow(() -> new NoSuchElementException("Order #" + orderId + " not found.")));
     }
 
     /**
      * registers a new Person with empty order list
      */
-    public PersonDto registerPerson(PersonCreateDto request) {
+    @NotNull
+    public PersonDto registerPerson(@NotNull final PersonCreateDto request) {
         // no need to check existing name, as it is possible to have 2 people with same name
         final Person registered = this.peopleRepos.saveAndFlush(new Person(request.getName()));
         // not considered mapping back from List<Order> to List<OrderDto>, as this is always empty list for new Person()
         return this.mapper.map(registered, PersonDto.class);
+    }
+
+    @NotNull
+    public List<OrderDto> readAllOrdersForPersonSortedByTime(@NotNull final String customerId) {
+        List<OrderDto> dtoList = new ArrayList<>();
+        // find requesting person from id
+        Optional<Person> findPerson = peopleRepos.findById(Long.parseLong(customerId));
+        Person requestingCustomer = findPerson.orElseThrow(
+                ()-> new NoSuchElementException(Constants.Messages.NO_PERSON_EXISTS_WITH_ID + customerId)
+        );
+        List<Order> orderList = this.orderRepos.findAllByCustomer(requestingCustomer, Sort.by("timestamp"));
+        orderList.forEach(order -> dtoList.add(mapper.map(order, OrderDto.class)));
+        return dtoList;
     }
 }

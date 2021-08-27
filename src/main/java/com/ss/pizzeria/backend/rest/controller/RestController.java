@@ -48,11 +48,12 @@ public class RestController {
     /* Tags */
     private static final String TAG_ORDERS = Constants.Tags.ORDERS;
 
-    /* url for order */
+    /* Url for order */
     private static final String ORDERS = Constants.Paths.ORDERS;
     private static final String PARAM_ORDER_ID = Constants.Params.ORDER_ID;
+    private static final String PARAM_CUSTOMER_ID = Constants.Params.CUSTOMER_ID;
 
-    /* inject service */
+    /* Inject service */
     @NonNull
     private final PizzeriaService myService;
 
@@ -101,7 +102,7 @@ public class RestController {
                     content = @Content(schema = @Schema(implementation = OrderDto.class)))
     })
     @ResponseBody
-    public ResponseEntity<List<OrderDto>> getOrders() {
+    public ResponseEntity<List<OrderDto>> getAllOrders() {
         List<OrderDto> list = this.myService.readAllOrdersSortedByTime();
         return ResponseEntity.status(HttpStatus.OK).body(list);
     }
@@ -138,6 +139,26 @@ public class RestController {
         }
         final PersonDto created = this.myService.registerPerson(name);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    /**
+     * Read all Orders for given customerId, sorted by timestamp
+     */
+    // when using default 'consumes' at class level, cannot process empty media content '' for GET
+    @GetMapping(path = ORDERS + "/{" + PARAM_CUSTOMER_ID + "}")
+    @Description(value = "Read all orders for given customerId, sorted by timestamp.")
+    @Operation(operationId = "orders.read_all_for_person", tags = {TAG_ORDERS},
+            summary = "Return list of Pizza orders for given Person ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successfully fetched list of Orders",
+                    content = @Content(schema = @Schema(implementation = OrderDto.class)))
+    })
+    @ResponseBody
+    public ResponseEntity<List<OrderDto>> getAllOrdersForPerson(@PathVariable(name = PARAM_CUSTOMER_ID)
+                                                                    @Parameter(name = PARAM_CUSTOMER_ID)
+                                                                    @NonNull final String customerId) {
+        List<OrderDto> list = this.myService.readAllOrdersForPersonSortedByTime(customerId);
+        return ResponseEntity.status(HttpStatus.OK).body(list);
     }
 
     /**
@@ -191,7 +212,7 @@ public class RestController {
                                               @Parameter(name = PARAM_ORDER_ID)
                                               @NonNull final String id) {
         // TODO: 1-header would be nice
-        this.myService.removeOrder(Long.parseLong(id, 10));
+        this.myService.removeOrder(id);
         return ResponseEntity.status(HttpStatus.OK).body(
                 new ResponseMessageDto("Successfully deleted order #" + id));
     }
