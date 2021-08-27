@@ -96,7 +96,7 @@ public class RestController {
     // when using default 'consumes' at class level, cannot process empty media content '' for GET
     @GetMapping(path = ORDERS)
     @Description(value = "Read the entire set of orders, sorted by timestamp.")
-    @Operation(operationId = "orders.read_all", summary = "Return list of Pizza orders", tags = {TAG_ORDERS})
+    @Operation(operationId = "orders.read_all", summary = "Return list of Pizza Orders", tags = {TAG_ORDERS})
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Successfully fetched list of Orders",
                     content = @Content(schema = @Schema(implementation = OrderDto.class)))
@@ -112,7 +112,7 @@ public class RestController {
      */
     @PostMapping(path = Constants.Paths.REG)
     @Description(value = "Create a new person with given name and return ID")
-    @Operation(operationId = "persons.create", summary = "Create a person", tags = {Constants.Tags.REG})
+    @Operation(operationId = "persons.create", summary = "Create a Person", tags = {Constants.Tags.REG})
     @Parameters(value = {
             @Parameter(name = "token", description = "Token for authentication", required = true, in = ParameterIn.HEADER)
     })
@@ -132,7 +132,7 @@ public class RestController {
                                             @org.springframework.web.bind.annotation.RequestBody
                                             @Valid
                                             @NonNull final PersonCreateDto name) {
-        // TODO: 2
+        // TODO: 1
         final String tokenStatus = checkTokenHeader(bearerToken);
         if (!tokenStatus.equals(Constants.OK)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ResponseMessageDto(tokenStatus));
@@ -148,7 +148,7 @@ public class RestController {
     @GetMapping(path = ORDERS + "/{" + PARAM_CUSTOMER_ID + "}")
     @Description(value = "Read all orders for given customerId, sorted by timestamp.")
     @Operation(operationId = "orders.read_all_for_person", tags = {TAG_ORDERS},
-            summary = "Return list of Pizza orders for given Person ID")
+            summary = "Return list of Pizza Orders for given Person ID")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Successfully fetched list of Orders",
                     content = @Content(schema = @Schema(implementation = OrderDto.class)))
@@ -162,11 +162,11 @@ public class RestController {
     }
 
     /**
-     * Create a new Order
+     * Create a new Order for Person
      */
     @PostMapping(path = ORDERS)
     @Description(value = "Create a new order for given person (id)")
-    @Operation(operationId = "orders.create", summary = "Create an order", tags = {TAG_ORDERS})
+    @Operation(operationId = "orders.create", summary = "Create an Order for Person", tags = {TAG_ORDERS})
     @Parameters(value = {
             @Parameter(name = "token", description = "Token for authentication", required = true, in = ParameterIn.HEADER)
     })
@@ -186,7 +186,7 @@ public class RestController {
                                                @org.springframework.web.bind.annotation.RequestBody
                                                @Valid
                                                @NonNull final OrderCreateDto order) {
-        // TODO: 2
+        // TODO: 1
         final String tokenStatus = checkTokenHeader(bearerToken);
         if (!tokenStatus.equals(Constants.OK)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ResponseMessageDto(tokenStatus));
@@ -197,7 +197,7 @@ public class RestController {
 
     @DeleteMapping(path = ORDERS + "/{" + PARAM_ORDER_ID + "}")
     @Description(value = "Delete an order")
-    @Operation(operationId = "orders.delete", summary = "Delete an order from the orders list", tags = {TAG_ORDERS})
+    @Operation(operationId = "orders.delete", summary = "Delete an Order from the orders list", tags = {TAG_ORDERS})
     @Parameters(value = {
             @Parameter(name = PARAM_ORDER_ID, description = "ID of order to delete", required = true, in = ParameterIn.PATH)
     })
@@ -211,17 +211,10 @@ public class RestController {
     public ResponseEntity<Object> deleteOrder(@PathVariable(name = PARAM_ORDER_ID)
                                               @Parameter(name = PARAM_ORDER_ID)
                                               @NonNull final String id) {
-        // TODO: 1-header would be nice
         this.myService.removeOrder(id);
         return ResponseEntity.status(HttpStatus.OK).body(
                 new ResponseMessageDto("Successfully deleted order #" + id));
     }
-
-    // delete user
-
-    // get all user orders
-
-    // post user cancel order
 
     /**
      * check authorization header
@@ -236,5 +229,4 @@ public class RestController {
         }
         return Constants.OK;
     }
-
 }

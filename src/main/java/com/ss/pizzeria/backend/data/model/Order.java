@@ -42,7 +42,7 @@ public class Order {
     @NotNull
     private Pizza.Flavour flavour;
 
-    @ManyToOne(optional = false, cascade = CascadeType.ALL)
+    @ManyToOne(optional = false, cascade = CascadeType.MERGE)
     @JoinColumn(name = "person_id", nullable = false, updatable = false,
             foreignKey = @ForeignKey(name = "fk_order_person_id", value = ConstraintMode.CONSTRAINT))
     @NotNull

@@ -11,7 +11,7 @@ public final class Constants {
 
     public static final String OK = "ok";
 
-    // TODO: 2-security implementation
+    // TODO: 1-security implementation
     public static final String AUTH_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE2MjkzMDAxNTgsIm5iZiI6MTYyOTMwMDE1OCwianRpIjoiNDc2M2JjZmUtMzM5Yy00MWFjLTkxY2EtZGE1MDk5Yjg3NmUzIiwiZXhwIjoxNjI5MzAxMDU4LCJpZGVudGl0eSI6InRlc3QiLCJmcmVzaCI6ZmFsc2UsInR5cGUiOiJhY2Nlc3MifQ.E6XL5Ese6yG1VmoVu8cl-sXThjz4TCSYCpi1QmtwdkQ";
 
     @NoArgsConstructor(access = AccessLevel.PRIVATE)

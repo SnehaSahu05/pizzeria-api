@@ -27,7 +27,7 @@ public class DataGenerator {
     @Bean
     public CommandLineRunner createOrders(PersonRepository personRepos) {
         // No need for explicit order repository,
-        // because the CASCADE.ALL in person OrderList
+        // because the CASCADE.ALL in Person's OrderList
         // will eventually add orders when adding associated Person
         return dataset -> {
             if (personRepos.count() != 0L) {
