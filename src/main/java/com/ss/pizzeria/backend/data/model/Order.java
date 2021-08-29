@@ -48,8 +48,7 @@ public class Order {
     @NotNull
     private Person customer;
 
-    @NotNull
-    private String timestamp;
+    private long timestamp;
 
     public Order() {
         this.timestamp = getCurrentTime();
@@ -69,8 +68,8 @@ public class Order {
         return 737800560;
     }
 
-    private String getCurrentTime() {
-        return Instant.now().truncatedTo(ChronoUnit.MILLIS).toString();
+    private long getCurrentTime() {
+        return Instant.now().truncatedTo(ChronoUnit.MILLIS).toEpochMilli();
     }
 
 }

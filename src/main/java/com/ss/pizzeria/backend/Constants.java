@@ -23,6 +23,7 @@ public final class Constants {
 
     @NoArgsConstructor(access = AccessLevel.PRIVATE)
     public static final class Paths {
+        public static final String API = "/api";
         public static final String AUTH = "/auth";
         public static final String ORDERS = "/orders";
         public static final String REG = "/register";

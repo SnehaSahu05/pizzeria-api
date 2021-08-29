@@ -49,7 +49,7 @@ public class PizzeriaService {
      * Returns a fixed token for `test' user and an empty token otherwise
      */
     @NotNull
-    public AccessTokenDto getAccessToken(@NotNull final UserAuthDto credentials) {
+    public AccessTokenDto fetchTokenForUser(@NotNull final UserAuthDto credentials) {
         final AccessTokenDto accessTokenDto = new AccessTokenDto();
         if (credentials.getUsername().equals("test") && credentials.getPassword().equals("test")) {
             accessTokenDto.setAccessToken(Constants.AUTH_TOKEN);

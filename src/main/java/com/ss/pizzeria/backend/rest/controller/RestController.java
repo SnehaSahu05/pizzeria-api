@@ -39,7 +39,7 @@ import java.util.List;
                 version = "1.1"
         ))
 @RequestMapping(
-        path = "/api",
+        path = Constants.Paths.API,
         //consumes = MediaType.APPLICATION_JSON_VALUE,
         produces = MediaType.APPLICATION_JSON_VALUE
 )
@@ -82,7 +82,7 @@ public class RestController {
             @org.springframework.web.bind.annotation.RequestBody
             @Valid
             @NonNull final UserAuthDto auth) {
-        final AccessTokenDto accessToken = this.myService.getAccessToken(auth);
+        final AccessTokenDto accessToken = this.myService.fetchTokenForUser(auth);
         if (accessToken.getAccessToken().isEmpty()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ResponseMessageDto("Bad username or password"));
         } else {
@@ -194,6 +194,10 @@ public class RestController {
         final OrderDto created = this.myService.createOrder(order);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
+
+    //@PutMapping(path = ORDERS + "/{" + PARAM_ORDER_ID + "}/update")
+    //updateOrder(id, orderUpdateDto)
+    //takes order ID in path + updateDto as body
 
     @DeleteMapping(path = ORDERS + "/{" + PARAM_ORDER_ID + "}")
     @Description(value = "Delete an order")

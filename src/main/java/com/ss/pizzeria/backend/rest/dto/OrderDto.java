@@ -22,6 +22,6 @@ public class OrderDto extends OrderCreateDto {
 
     @Schema(description = "Creation/Update timestamp of the order")
     @JsonProperty("Timestamp")
-    private String timestamp;
+    private Long timestamp;
 
 }
