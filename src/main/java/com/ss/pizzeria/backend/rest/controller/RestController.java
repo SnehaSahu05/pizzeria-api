@@ -181,7 +181,7 @@ public class RestController {
                     content = @Content(schema = @Schema(implementation = ResponseMessageDto.class)))
     })
     @ResponseBody
-    public ResponseEntity<Object> createOrders(@RequestHeader(name = "token")
+    public ResponseEntity<Object> createOrder(@RequestHeader(name = "token")
                                                @NonNull final String bearerToken,
                                                @org.springframework.web.bind.annotation.RequestBody
                                                @Valid

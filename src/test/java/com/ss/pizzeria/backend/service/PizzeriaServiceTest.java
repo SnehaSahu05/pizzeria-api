@@ -6,6 +6,7 @@ import com.ss.pizzeria.backend.data.dao.PersonRepository;
 import com.ss.pizzeria.backend.data.model.Order;
 import com.ss.pizzeria.backend.data.model.Person;
 import com.ss.pizzeria.backend.data.model.Pizza;
+import com.ss.pizzeria.backend.rest.dto.OrderCreateDto;
 import com.ss.pizzeria.backend.rest.dto.OrderDto;
 import com.ss.pizzeria.backend.rest.dto.UserAuthDto;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +26,7 @@ import org.springframework.lang.NonNull;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -66,7 +68,7 @@ class PizzeriaServiceTest {
     }
 
     @Test
-    void readAllOrdersSortedByTime() {
+    void testReadAllOrdersSortedByTime() {
         final List<Order> list = buildDataSet();
         final List<OrderDto> mappedList = buildDtoData(list);
         Mockito.when(this.orderRepository.findAll(Sort.by("timestamp"))).thenReturn(list);
@@ -90,6 +92,48 @@ class PizzeriaServiceTest {
         }
 //        Mockito.verify(this.orderRepository, Mockito.times(length))
 //                .findAll(Mockito.any(Sort.class)); //description("Method should be called exact number of times.")
+    }
+
+    @Test
+    void testCreateOrder() {
+        final List<Order> list = buildDataSet();
+        final List<OrderDto> mappedList = buildDtoData(list);
+
+        final Person newPerson = buildPerson(8, "TestUser");
+        OrderCreateDto newOrdercreateDto = new OrderCreateDto(
+                Pizza.Crust.THIN,Pizza.Flavour.HAWAII,
+                Pizza.Size.M,134,newPerson.getId());
+        final Order newOrder = buildOrder(13,
+                newOrdercreateDto.getSize(),
+                newOrdercreateDto.getFlavour(),
+                newOrdercreateDto.getTableNo(),
+                newPerson
+                );
+        final OrderDto newOrderDto = buildOrderDto(
+                newOrder.getId(),
+                newOrder.getCrust(),
+                newOrder.getSize(),
+                newOrder.getFlavour(),
+                newOrder.getTableNo(),
+                newOrder.getCustomer().getId(),
+                newOrder.getTimestamp()
+        );
+
+        Mockito.when(this.personRepository.findById(newPerson.getId()))
+                .thenReturn(Optional.of(newPerson));
+        Mockito.when(this.mapper.map(newOrdercreateDto, Order.class))
+                        .thenReturn(newOrder);
+        Mockito.when(this.orderRepository.saveAndFlush(newOrder))
+                .thenReturn(newOrder);
+        Mockito.when(this.mapper.map(newOrder, OrderDto.class))
+                .thenReturn(newOrderDto);
+
+        final var result = this.pizzeriaService.createOrder(newOrdercreateDto);
+        assertEquals(OrderDto.class, result.getClass(),
+                    "result should be of type OrderDto, but instead is of type: "
+                            + result.getClass().getSimpleName());
+        assertEquals(newPerson.getId(), result.getCustomerId(),
+                "The input customer ID and that of the ordering person in result should be same");
     }
 
     @AfterEach
@@ -120,13 +164,11 @@ class PizzeriaServiceTest {
     private List<OrderDto> buildDtoData(List<Order> list) {
         List<OrderDto> dtos = new ArrayList<>();
         list.forEach(o -> {
-            OrderDto d = new OrderDto();
+            OrderDto d = new OrderDto(o.getId(),o.getTimestamp());
             d.setCrust(o.getCrust());
             d.setFlavour(o.getFlavour());
             d.setSize(o.getSize());
             d.setTableNo(o.getTableNo());
-            d.setTimestamp(o.getTimestamp());
-            d.setOrderId(o.getId());
             d.setCustomerId(o.getCustomer().getId());
             dtos.add(d);
         });
@@ -159,7 +201,9 @@ class PizzeriaServiceTest {
     /**
      * adds a new Order
      */
-    private Order buildOrder(final int id, @NonNull final Pizza.Size size, @NonNull final Pizza.Flavour flavour, final int table, @NonNull final Person p) {
+    private Order buildOrder(final int id, @NonNull final Pizza.Size size,
+                             @NonNull final Pizza.Flavour flavour,
+                             final int table, @NonNull final Person p) {
         Order o = new Order();
         o.setId((long) id);
         o.setCrust(Pizza.Crust.THIN);
@@ -168,6 +212,23 @@ class PizzeriaServiceTest {
         o.setTableNo(table);
         o.setCustomer(p);
         return o;
+    }
+
+    /**
+     * creates a new OrderDto
+     */
+    private OrderDto buildOrderDto(@NonNull final Long oId, @NonNull final Pizza.Crust crust,
+                                   @NonNull final Pizza.Size size,
+                                   @NonNull final Pizza.Flavour flavour,
+                                   final int tableNo, @NonNull final Long customerId,
+                                   @NonNull final Long time) {
+    OrderDto order = new OrderDto(oId, time);
+    order.setCustomerId(customerId);
+    order.setTableNo(tableNo);
+    order.setSize(size);
+    order.setFlavour(flavour);
+    order.setCrust(crust);
+    return order;
     }
 
 }

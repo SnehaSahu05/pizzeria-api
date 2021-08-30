@@ -12,7 +12,7 @@ The API allows to perform the below listed tasks -
 * Get a list of all Pizza Orders specific to a given Person
 * Delete a Pizza Order by it ID
 
-Other features (at present) -
+Project features (at present) -
 * Zero or more Pizza Orders can be linked with a single Person
 * Deleting an Order does not cascade delete operation to the linked Person.
 * Only a limited Pizza configuration is allowed:
@@ -26,6 +26,7 @@ Other features (at present) -
 * Working tests - for one method from each class
   - readAllOrdersSortedByTime from PizzeriaService Class
   - authenticateApi from RestController Class
+* Service and Controller Test for new order creation
 
 TODO:
 * Test cases for all methods in Service and RestController
