@@ -1,31 +1,22 @@
 package com.ss.pizzeria.backend.rest.controller;
 
-import ch.qos.logback.core.util.TimeUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ss.pizzeria.backend.Constants;
 import com.ss.pizzeria.backend.data.model.Person;
 import com.ss.pizzeria.backend.data.model.Pizza;
-import com.ss.pizzeria.backend.rest.dto.AccessTokenDto;
-import com.ss.pizzeria.backend.rest.dto.OrderCreateDto;
-import com.ss.pizzeria.backend.rest.dto.OrderDto;
-import com.ss.pizzeria.backend.rest.dto.UserAuthDto;
+import com.ss.pizzeria.backend.rest.dto.*;
 import com.ss.pizzeria.backend.service.PizzeriaService;
-import io.swagger.v3.core.util.Json;
 import lombok.extern.slf4j.Slf4j;
-import org.h2.util.DateTimeUtils;
-import org.junit.Ignore;
 import org.junit.jupiter.api.*;
 import org.mockito.InjectMocks;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.lang.NonNull;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
@@ -34,11 +25,14 @@ import org.springframework.web.context.WebApplicationContext;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.NoSuchElementException;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * Unit Tests for Rest API requests to Controller
+ *
  * @author Sneha
  */
 @Slf4j
@@ -133,80 +127,279 @@ class RestControllerTest {
     }
 
     @Test
-    void testCreateOrder() throws Exception {
-        // input
-        Person p = new Person("Axel");
-        p.setId(10L);
-        final OrderCreateDto requestOrderDto = new OrderCreateDto(
-                Pizza.Crust.THIN,Pizza.Flavour.QUARTTRO_FORMAGGI,
-                Pizza.Size.M,4444,p.getId());
+    void getAllOrders_responseOk() throws Exception {
+        // no input
         // mock
-        OrderDto createdOrderDto = new OrderDto(15L,
-                Instant.now().truncatedTo(ChronoUnit.MILLIS).toEpochMilli());
-        createdOrderDto.setCrust(requestOrderDto.getCrust());
-        createdOrderDto.setFlavour(requestOrderDto.getFlavour());
-        createdOrderDto.setSize(requestOrderDto.getSize());
-        createdOrderDto.setTableNo(requestOrderDto.getTableNo());
-        createdOrderDto.setCustomerId(requestOrderDto.getCustomerId());
+        final AccessTokenDto access = new AccessTokenDto();
+        access.setAccessToken(Constants.AUTH_TOKEN);
+        Mockito.when(this.pizzeriaService.readAllOrdersSortedByTime())
+                .thenReturn(List.of());
+        // request
+        final MockHttpServletRequestBuilder mockRequest = MockMvcRequestBuilders
+                .get(Constants.Paths.API + Constants.Paths.ORDERS);
+        // response
+        mockMvc.perform(mockRequest)
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andExpect(MockMvcResultMatchers.content()
+                        .contentType(MediaType.APPLICATION_JSON_VALUE));
+        // verify count of service calls
+        Mockito.verify(this.pizzeriaService, Mockito.times(1))
+                .readAllOrdersSortedByTime();
+    }
 
+    @Test
+    void addPerson_responseCreated() throws Exception {
+        // input
+        PersonCreateDto personCreateDto = new PersonCreateDto();
+        personCreateDto.setName("John");
+        // mock
+        final PersonDto personDto = new PersonDto();
+        personDto.setPersonId(4L);
+        personDto.setName(personCreateDto.getName());
+        personDto.setOrderList(List.of());
+        Mockito.when(this.pizzeriaService.registerPerson(personCreateDto))
+                .thenReturn(personDto);
+        // request
+        final MockHttpServletRequestBuilder mockRequest = MockMvcRequestBuilders
+                .post(Constants.Paths.API + Constants.Paths.REG)
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .header("token", Constants.AUTH_TOKEN)
+                .content(objectAsJson(personCreateDto));
+        // response
+        mockMvc.perform(mockRequest)
+                .andExpect(MockMvcResultMatchers.status().isCreated())
+                .andExpect(MockMvcResultMatchers.content()
+                        .contentType(MediaType.APPLICATION_JSON_VALUE));
+        // check that exactly one service call is made with respect to one successful request
+        Mockito.verify(this.pizzeriaService, Mockito.times(1))
+                .registerPerson(Mockito.any(PersonCreateDto.class));
+    }
+
+    @Test
+    void addPerson_responseBadRequest() throws Exception {
+        // input
+        PersonCreateDto personCreateDto = new PersonCreateDto();
+        personCreateDto.setName("John");
+        // mock not needed
+        // request
+        final MockHttpServletRequestBuilder mockRequestBadToken = MockMvcRequestBuilders
+                .post(Constants.Paths.API + Constants.Paths.REG)
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .header("bad_token_name", Constants.AUTH_TOKEN)
+                .content(objectAsJson(personCreateDto));
+        // response
+        mockMvc.perform(mockRequestBadToken)
+                .andExpect(MockMvcResultMatchers.status().isBadRequest());        // request
+        // request
+        final MockHttpServletRequestBuilder mockRequestBadContent = MockMvcRequestBuilders
+                .post(Constants.Paths.API + Constants.Paths.REG)
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .header("token", Constants.AUTH_TOKEN)
+                .content("{ bad content }");
+        // response
+        mockMvc.perform(mockRequestBadContent)
+                .andExpect(MockMvcResultMatchers.status().isBadRequest());
+        // check that no service call is ever made
+        Mockito.verify(this.pizzeriaService, Mockito.times(0))
+                .registerPerson(Mockito.any(PersonCreateDto.class));
+    }
+
+    @Test
+    void addPerson_responseUnAuthorized() throws Exception {
+        // input
+        PersonCreateDto personCreateDto = new PersonCreateDto();
+        personCreateDto.setName("John");
+        // mock not needed
+        // request
+        final MockHttpServletRequestBuilder mockRequestEmptyToken = MockMvcRequestBuilders
+                .post(Constants.Paths.API + Constants.Paths.REG)
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .header("token", "")
+                .content(objectAsJson(personCreateDto));
+        // response
+        mockMvc.perform(mockRequestEmptyToken)
+                .andExpect(MockMvcResultMatchers.status().isUnauthorized());        // request
+        // request
+        final MockHttpServletRequestBuilder mockRequestWrongToken = MockMvcRequestBuilders
+                .post(Constants.Paths.API + Constants.Paths.REG)
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .header("token", "wrong_token")
+                .content(objectAsJson(personCreateDto));
+        // response
+        mockMvc.perform(mockRequestWrongToken)
+                .andExpect(MockMvcResultMatchers.status().isUnauthorized());
+        // check that no service call is ever made
+        Mockito.verify(this.pizzeriaService, Mockito.times(0))
+                .registerPerson(Mockito.any(PersonCreateDto.class));
+    }
+
+    @Test
+    void getAllOrdersForPerson_responseOk() throws Exception {
+        // input
+        final String id = "id";
+        // mock
+        Mockito.when(this.pizzeriaService.readAllOrdersForPersonSortedByTime(id))
+                .thenReturn(List.of());
+        // request
+        final MockHttpServletRequestBuilder mockRequest = MockMvcRequestBuilders
+                .get(Constants.Paths.API + Constants.Paths.ORDERS
+                        + "/" + id);
+        // response
+        mockMvc.perform(mockRequest)
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andExpect(MockMvcResultMatchers.content()
+                        .contentType(MediaType.APPLICATION_JSON_VALUE));
+        // verify count of service calls
+        Mockito.verify(this.pizzeriaService, Mockito.times(1))
+                .readAllOrdersForPersonSortedByTime(id);
+    }
+
+    @Test
+    void testCreateOrder_responseCreated() throws Exception {
+        // input
+        Person p = buildPerson(10L, "Axel");
+        final OrderCreateDto requestOrderDto = new OrderCreateDto(
+                Pizza.Crust.THIN, Pizza.Flavour.QUARTTRO_FORMAGGI,
+                Pizza.Size.M, 4444, p.getId());
+        // mock
+        OrderDto createdOrderDto = buildOrderDto(15L, requestOrderDto);
         Mockito.when(this.pizzeriaService.createOrder(requestOrderDto))
                 .thenReturn(createdOrderDto);
-
-        /* CASE: CREATED */
-        // request 1
+        // request
         final MockHttpServletRequestBuilder mockRequest = MockMvcRequestBuilders
                 .post(Constants.Paths.API + Constants.Paths.ORDERS)
                 .contentType(MediaType.APPLICATION_JSON)
                 .accept(MediaType.APPLICATION_JSON)
                 .header("token", Constants.AUTH_TOKEN)
                 .content(objectAsJson(requestOrderDto));
-        // response 1
+        // response
         mockMvc.perform(mockRequest)
                 .andExpect(MockMvcResultMatchers.status().isCreated())
                 .andExpect(MockMvcResultMatchers.content()
                         .contentType(MediaType.APPLICATION_JSON_VALUE));
+        // check that exactly one service call is made with respect to one successful request
+        Mockito.verify(this.pizzeriaService, Mockito.times(1))
+                .createOrder(Mockito.any(OrderCreateDto.class));
+    }
 
-        /* CASE: UNAUTHORIZED */
-        // request 2
-        final MockHttpServletRequestBuilder mockRequestTwo = MockMvcRequestBuilders
+    @Test
+    void testCreateOrder_responseUnAuthorized() throws Exception {
+        // input
+        Person p = new Person("Axel");
+        p.setId(10L);
+        final OrderCreateDto requestOrderDto = new OrderCreateDto(
+                Pizza.Crust.THIN, Pizza.Flavour.QUARTTRO_FORMAGGI,
+                Pizza.Size.M, 4444, p.getId());
+        // mock not needed
+        // request
+        final MockHttpServletRequestBuilder mockRequestEmptyToken = MockMvcRequestBuilders
                 .post(Constants.Paths.API + Constants.Paths.ORDERS)
                 .contentType(MediaType.APPLICATION_JSON)
                 .accept(MediaType.APPLICATION_JSON)
                 .header("token", "")
                 .content(objectAsJson(requestOrderDto));
-        // response 2
-        mockMvc.perform(mockRequestTwo)
+        // response
+        mockMvc.perform(mockRequestEmptyToken)
                 .andExpect(MockMvcResultMatchers.status().isUnauthorized())
                 .andExpect(MockMvcResultMatchers.content()
                         .contentType(MediaType.APPLICATION_JSON_VALUE));
-
-        /* CASE: BAD REQUEST */
-        // request 3
-        final MockHttpServletRequestBuilder mockRequestThree = MockMvcRequestBuilders
+        // request
+        final MockHttpServletRequestBuilder mockRequestWrongToken = MockMvcRequestBuilders
                 .post(Constants.Paths.API + Constants.Paths.ORDERS)
                 .contentType(MediaType.APPLICATION_JSON)
                 .accept(MediaType.APPLICATION_JSON)
-                .header("wrong_token_name", Constants.AUTH_TOKEN)
+                .header("token", "wrong_token")
                 .content(objectAsJson(requestOrderDto));
-        // response 3
-        mockMvc.perform(mockRequestThree)
+        // response
+        mockMvc.perform(mockRequestWrongToken)
+                .andExpect(MockMvcResultMatchers.status().isUnauthorized())
+                .andExpect(MockMvcResultMatchers.content()
+                        .contentType(MediaType.APPLICATION_JSON_VALUE));
+        // check that no service call is ever made
+        Mockito.verify(this.pizzeriaService, Mockito.times(0))
+                .createOrder(Mockito.any(OrderCreateDto.class));
+    }
+
+    @Test
+    void testCreateOrder_responseBadRequest() throws Exception {
+        // input
+        Person p = new Person("Axel");
+        p.setId(10L);
+        final OrderCreateDto requestOrderDto = new OrderCreateDto(
+                Pizza.Crust.THIN, Pizza.Flavour.QUARTTRO_FORMAGGI,
+                Pizza.Size.M, 4444, p.getId());
+        // mock not needed
+        // request
+        final MockHttpServletRequestBuilder mockRequestBadToken = MockMvcRequestBuilders
+                .post(Constants.Paths.API + Constants.Paths.ORDERS)
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .header("bad_token_name", Constants.AUTH_TOKEN)
+                .content(objectAsJson(requestOrderDto));
+        // response
+        mockMvc.perform(mockRequestBadToken)
                 .andExpect(MockMvcResultMatchers.status().isBadRequest());
-        // request 4
-        final MockHttpServletRequestBuilder mockRequestFour = MockMvcRequestBuilders
+        // request
+        final MockHttpServletRequestBuilder mockRequestBadBody = MockMvcRequestBuilders
                 .post(Constants.Paths.API + Constants.Paths.ORDERS)
                 .contentType(MediaType.APPLICATION_JSON)
                 .accept(MediaType.APPLICATION_JSON)
                 .header("token", Constants.AUTH_TOKEN)
-                .content("{ wrong body : wrong}");
-        // response 4
-        mockMvc.perform(mockRequestFour)
+                .content("{ bad body : incorrect}");
+        // response
+        mockMvc.perform(mockRequestBadBody)
                 .andExpect(MockMvcResultMatchers.status().isBadRequest())
                 .andExpect(MockMvcResultMatchers.content()
                         .contentType(MediaType.APPLICATION_JSON_VALUE));
-
-        // check that even though there are four http requests only one actually proceeds to service call
-        Mockito.verify(this.pizzeriaService, Mockito.times(1))
+        // check that no service call is ever made
+        Mockito.verify(this.pizzeriaService, Mockito.times(0))
                 .createOrder(Mockito.any(OrderCreateDto.class));
+    }
+
+    @Test
+    void deleteOrder_responseOk() throws Exception {
+        // input
+        final String id = "id";
+        // mock
+        Mockito.doNothing().when(this.pizzeriaService).removeOrder(id);
+        // request
+        final MockHttpServletRequestBuilder mockRequest = MockMvcRequestBuilders
+                .delete(Constants.Paths.API + Constants.Paths.ORDERS
+                        + "/" + id);
+        // response
+        mockMvc.perform(mockRequest)
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andExpect(MockMvcResultMatchers.content()
+                        .contentType(MediaType.APPLICATION_JSON_VALUE));
+        // verify count of service calls
+        Mockito.verify(this.pizzeriaService, Mockito.times(1))
+                .removeOrder(id);
+    }
+
+    @Test
+    void deleteOrder_responseNotFound() throws Exception {
+        // input
+        final String id = "id";
+        // mock
+        Mockito.doThrow(new NoSuchElementException())
+                .when(this.pizzeriaService).removeOrder(id);
+        // request
+        final MockHttpServletRequestBuilder mockRequest = MockMvcRequestBuilders
+                .delete(Constants.Paths.API + Constants.Paths.ORDERS
+                        + "/" + id);
+        // response
+        mockMvc.perform(mockRequest)
+                .andExpect(MockMvcResultMatchers.status().isNotFound())
+                .andExpect(MockMvcResultMatchers.content()
+                        .contentType(MediaType.APPLICATION_JSON_VALUE));
+        // verify count of service calls
+        Mockito.verify(this.pizzeriaService, Mockito.times(1))
+                .removeOrder(id);
     }
 
     @AfterEach
@@ -226,7 +419,7 @@ class RestControllerTest {
         assertNotNull(this.restController, "Corresponding class instance should not be null.");
         assertNotNull(this.pizzeriaService, "Mocked service instance should not be null.");
 
-       // ensure that the controller in test is actually injected with the desired service
+        // ensure that the controller in test is actually injected with the desired service
         this.restController = new RestController(this.pizzeriaService);
 
     }
@@ -237,6 +430,30 @@ class RestControllerTest {
     private String objectAsJson(Object obj) throws JsonProcessingException {
         final ObjectMapper objectMapper = new ObjectMapper();
         return objectMapper.writeValueAsString(obj);
+    }
+
+    /**
+     * Create a new Person with given name and id.
+     */
+    private Person buildPerson(@NonNull final long id, @NonNull final String name) {
+        Person p = new Person(name);
+        p.setId(id);
+        return p;
+    }
+
+    /**
+     * Create a new OrderDto with given id and CreateOrderDto.
+     */
+    private OrderDto buildOrderDto(@NonNull final Long id,
+                                   @NonNull final OrderCreateDto in) {
+        OrderDto out = new OrderDto(id,
+                Instant.now().truncatedTo(ChronoUnit.MILLIS).toEpochMilli());
+        out.setCrust(in.getCrust());
+        out.setFlavour(in.getFlavour());
+        out.setSize(in.getSize());
+        out.setTableNo(in.getTableNo());
+        out.setCustomerId(in.getCustomerId());
+        return out;
     }
 
 }
