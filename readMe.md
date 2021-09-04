@@ -22,14 +22,10 @@ Project features (at present) -
 * Ordering a Pizza requires an additional header named 'bearerToken' 
   for authentication, which is not a real security implementation, 
   but only a dummy implementation.
-* Test setup for both PizzeriaService and RestController Classes
-* Working tests - for one method from each class
-  - readAllOrdersSortedByTime from PizzeriaService Class
-  - authenticateApi from RestController Class
-* Service and Controller Test for new order creation
+* Tests for Service and RestController Classes
+
 
 TODO:
-* Test cases for all methods in Service and RestController
 * Updating a created Order
 * Include new field called OrderType in Order - TakeAway/Delivery
 * Outh2 + Spring security
