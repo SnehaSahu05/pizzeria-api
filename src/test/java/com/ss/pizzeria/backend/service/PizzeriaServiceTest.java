@@ -10,7 +10,6 @@ import com.ss.pizzeria.backend.rest.dto.OrderCreateDto;
 import com.ss.pizzeria.backend.rest.dto.OrderDto;
 import com.ss.pizzeria.backend.rest.dto.UserAuthDto;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,6 +25,7 @@ import org.springframework.lang.NonNull;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -69,8 +69,13 @@ class PizzeriaServiceTest {
 
     @Test
     void testReadAllOrdersSortedByTime() {
-        final List<Order> list = buildDataSet();
+        // dataset
+        final Person p = buildPerson(8, "TestUser");
+        final List<Order> list = buildOrdersForPerson(p);
+        p.getOrderList().addAll(list);
         final List<OrderDto> mappedList = buildDtoData(list);
+        // input not needed
+        // mock
         Mockito.when(this.orderRepository.findAll(Sort.by("timestamp"))).thenReturn(list);
         list.forEach(o ->
                 Mockito.when(this.mapper.map(o, OrderDto.class))
@@ -79,6 +84,7 @@ class PizzeriaServiceTest {
 
         //log.info("\n method[{}]", this.orderRepository.findAll(Sort.by("timestamp")));
 
+        // test
         final var result = this.pizzeriaService.readAllOrdersSortedByTime();
         final var length = result.size();
         assertEquals(list.size(), length, "Result size should match to that of 'list'.");
@@ -90,24 +96,30 @@ class PizzeriaServiceTest {
                 assertTrue(result.get(i - 1).getTimestamp() <= r.getTimestamp(),
                         "The resulting Orders should be in ascending order of timestamp");
         }
-//        Mockito.verify(this.orderRepository, Mockito.times(length))
-//                .findAll(Mockito.any(Sort.class)); //description("Method should be called exact number of times.")
+
+        Mockito.verify(this.orderRepository,
+                        Mockito.times(1)
+                                .description("Method should be called exact one time."))
+                .findAll(Mockito.any(Sort.class));
     }
 
     @Test
     void testCreateOrder() {
-        final List<Order> list = buildDataSet();
+        // dataset
+        final Person p = buildPerson(8, "TestUser");
+        final List<Order> list = buildOrdersForPerson(p);
+        p.getOrderList().addAll(list);
         final List<OrderDto> mappedList = buildDtoData(list);
-
-        final Person newPerson = buildPerson(8, "TestUser");
+        // input
         OrderCreateDto newOrdercreateDto = new OrderCreateDto(
                 Pizza.Crust.THIN,Pizza.Flavour.HAWAII,
-                Pizza.Size.M,134,newPerson.getId());
-        final Order newOrder = buildOrder(13,
+                Pizza.Size.M,134,p.getId());
+        // mocks
+        final Order newOrder = buildOrder(13L,
                 newOrdercreateDto.getSize(),
                 newOrdercreateDto.getFlavour(),
                 newOrdercreateDto.getTableNo(),
-                newPerson
+                p
                 );
         final OrderDto newOrderDto = buildOrderDto(
                 newOrder.getId(),
@@ -118,9 +130,6 @@ class PizzeriaServiceTest {
                 newOrder.getCustomer().getId(),
                 newOrder.getTimestamp()
         );
-
-        Mockito.when(this.personRepository.findById(newPerson.getId()))
-                .thenReturn(Optional.of(newPerson));
         Mockito.when(this.mapper.map(newOrdercreateDto, Order.class))
                         .thenReturn(newOrder);
         Mockito.when(this.orderRepository.saveAndFlush(newOrder))
@@ -128,12 +137,104 @@ class PizzeriaServiceTest {
         Mockito.when(this.mapper.map(newOrder, OrderDto.class))
                 .thenReturn(newOrderDto);
 
+        // when person does not exist
+        Mockito.when(this.personRepository.findById(p.getId()))
+                .thenReturn(Optional.empty());
+        assertThrows(NoSuchElementException.class,
+                () -> this.pizzeriaService.createOrder(newOrdercreateDto),
+                "Exception should be thrown when person could not be found");
+
+        // when person exists
+        Mockito.when(this.personRepository.findById(p.getId()))
+                .thenReturn(Optional.of(p));
         final var result = this.pizzeriaService.createOrder(newOrdercreateDto);
         assertEquals(OrderDto.class, result.getClass(),
                     "result should be of type OrderDto, but instead is of type: "
                             + result.getClass().getSimpleName());
-        assertEquals(newPerson.getId(), result.getCustomerId(),
+        assertEquals(p.getId(), result.getCustomerId(),
                 "The input customer ID and that of the ordering person in result should be same");
+    }
+
+    @Test
+    void removeOrder() {
+        // input
+        final String id = "6";
+        // mock
+        final Long idAsLong = Long.parseLong(id, 10);
+        final Person person = buildPerson(4, "Annie");
+        final Order order = buildOrder(idAsLong, Pizza.Size.L,
+                Pizza.Flavour.QUARTTRO_FORMAGGI, 6, person);
+        Mockito.doNothing().when(this.orderRepository).delete(order);
+
+        // when order does not exist
+        Mockito.when(this.orderRepository.findById(idAsLong))
+                .thenReturn(Optional.empty());
+        assertThrows(NoSuchElementException.class,
+                () -> this.pizzeriaService.removeOrder(id),
+                "Should throw appropriate exception when order not found.");
+
+        // when order exists
+        Mockito.when(this.orderRepository.findById(idAsLong))
+                        .thenReturn(Optional.of(order));
+        assertDoesNotThrow(
+                () -> this.pizzeriaService.removeOrder(id),
+                "Should not throw any exception when order is found.");
+    }
+
+//    @Disabled("To be added later")
+//    @Test
+//    void registerPerson() {
+//    }
+
+    @Test
+    void readAllOrdersForPersonSortedByTime()  {
+        // dataset
+        final Person p = buildPerson(1, "Alen");
+        final List<Order> list = buildOrdersForPerson(p);
+        p.getOrderList().addAll(list);
+        final List<OrderDto> mappedList = buildDtoData(list);
+        // input
+        final String id = "5";
+        // mock
+        Mockito.when(this.personRepository.findById(p.getId()))
+                .thenReturn(Optional.of(p));
+        Mockito.when(this.personRepository.findById(Long.parseLong(id,10)))
+                .thenReturn(Optional.empty());
+        Mockito.when(this.orderRepository
+                .findAllByCustomer(p,Sort.by("timestamp")))
+                .thenReturn(list);
+        list.forEach(o ->
+                Mockito.when(this.mapper.map(o, OrderDto.class))
+                        .thenReturn(mappedList.get(list.indexOf(o)))
+        );
+
+        // check when person does not exist
+        assertThrows(NoSuchElementException.class,
+                () -> this.pizzeriaService.readAllOrdersForPersonSortedByTime(id),
+                "Should throw exception when person not found");
+
+        // check when person does exist
+        final var result = this.pizzeriaService
+                .readAllOrdersForPersonSortedByTime(p.getId().toString());
+        final var length = result.size();
+        assertEquals(list.size(), length, "Result size should match to that of 'list'.");
+        for (int i = 0; i < length; i++) {
+            final var r = result.get(i);
+            assertEquals(OrderDto.class, r.getClass(),
+                    "result at index=" + i + " should be of type OrderDto, but instead is of type: " + r.getClass().getSimpleName());
+            if (i != 0)
+                assertTrue(result.get(i - 1).getTimestamp() <= r.getTimestamp(),
+                        "The resulting Orders should be in ascending order of timestamp");
+        }
+
+        Mockito.verify(this.personRepository,
+                        Mockito.times(2)
+                                .description("Method should be called exactly two times."))
+                .findById(Mockito.any(Long.class));
+        Mockito.verify(this.orderRepository,
+                        Mockito.times(1)
+                                .description("Method should be called exact one time."))
+                .findAllByCustomer(Mockito.any(Person.class), Mockito.any(Sort.class));
     }
 
     @AfterEach
@@ -178,14 +279,10 @@ class PizzeriaServiceTest {
     /**
      * generates a dummy data set
      */
-    private List<Order> buildDataSet() {
-        final Person a = buildPerson(1, "Alen");
-        final Person b = buildPerson(2, "Berry");
-        final Order o1 = buildOrder(1, Pizza.Size.L, Pizza.Flavour.REGINA, 12, a);
-        final Order o2 = buildOrder(2, Pizza.Size.M, Pizza.Flavour.HAWAII, 7, b);
-        final Order o3 = buildOrder(3, Pizza.Size.M, Pizza.Flavour.HAWAII, 7, a);
-        a.getOrderList().addAll(List.of(o1, o3));
-        b.getOrderList().add(o2);
+    private List<Order> buildOrdersForPerson(@NonNull final Person person) {
+        final Order o1 = buildOrder(1L, Pizza.Size.L, Pizza.Flavour.REGINA, 12, person);
+        final Order o2 = buildOrder(2L, Pizza.Size.M, Pizza.Flavour.HAWAII, 7, person);
+        final Order o3 = buildOrder(3L, Pizza.Size.M, Pizza.Flavour.HAWAII, 7, person);
         return List.of(o1, o2, o3);
     }
 
@@ -201,11 +298,12 @@ class PizzeriaServiceTest {
     /**
      * adds a new Order
      */
-    private Order buildOrder(final int id, @NonNull final Pizza.Size size,
+    private Order buildOrder(@NonNull final Long id,
+                             @NonNull final Pizza.Size size,
                              @NonNull final Pizza.Flavour flavour,
                              final int table, @NonNull final Person p) {
         Order o = new Order();
-        o.setId((long) id);
+        o.setId(id);
         o.setCrust(Pizza.Crust.THIN);
         o.setSize(size);
         o.setFlavour(flavour);
